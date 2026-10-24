@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="docs/logo.png" alt="phntm logo" width="160">
+</p>
+
 # phntm
 
 ### your mac, on call.
