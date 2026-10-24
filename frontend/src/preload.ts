@@ -1,3 +1,10 @@
-//oxlint-disable eslint-plugin-unicorn/no-empty-file
-// See the Electron documentation for details on how to use preload scripts:
-// https://www.electronjs.org/docs/latest/tutorial/process-model#preload-scripts
+import { contextBridge, ipcRenderer } from 'electron';
+
+contextBridge.exposeInMainWorld('bar', {
+  resize: (width: number, height: number) =>
+    ipcRenderer.send('resize', width, height),
+  blur: () => ipcRenderer.send('blur'),
+  phase: (phase: string) => ipcRenderer.send('phase', phase),
+  onPhase: (cb: (phase: string) => void) =>
+    ipcRenderer.on('phase', (_e, phase: string) => cb(phase)),
+});
