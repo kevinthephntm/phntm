@@ -23,10 +23,10 @@ a meta internship just went live and you're across town. call your mac and say "
 <p align="center">
   <img src="docs/screenshots/02-applying.jpg" alt="applying to a meta internship" width="32%">
   <img src="docs/screenshots/03-submitting-assignment.jpg" alt="submitting an assignment" width="32%">
-  <img src="docs/screenshots/04-tiktok.jpg" alt="the mac's screen shared on a facetime call" width="32%">
+  <img src="docs/screenshots/04-tiktok.jpg" alt="phntm scrolling tiktok on your mac" width="32%">
 </p>
 
-<p align="center"><sub>the command panel · applying to a meta internship · submitting an assignment · driving the mac over facetime</sub></p>
+<p align="center"><sub>the command panel · applying to a meta internship · submitting an assignment · phntm scrolling tiktok on your mac</sub></p>
 
 ## run it
 
