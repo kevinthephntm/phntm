@@ -26,6 +26,17 @@ class Task(BaseModel):
     text: str
 
 
+class Event(BaseModel):
+    type: str
+    text: str
+
+
+@app.post("/event")
+def push_event(ev: Event):
+    events.put(ev.model_dump())
+    return {"ok": True}
+
+
 @app.get("/health")
 def health():
     return {"ok": True}
@@ -35,7 +46,8 @@ def health():
 def start_task(task: Task):
     global worker
     if worker and worker.is_alive():
-        raise HTTPException(409, "a task is already running")
+        stop.set()
+        worker.join(timeout=10)
     stop.clear()
     worker = threading.Thread(target=run_task, args=(task.text, events.put, stop), daemon=True)
     worker.start()
