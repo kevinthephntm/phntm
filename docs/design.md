@@ -94,7 +94,7 @@ Every event is `{type, text}`. The island's reducer keys off these strings, so t
 | `action` | `click {"x":…}`, `open_app Notes` | Working · step N |
 | `message` | `task: …`, `task from iMessage: …` | Thinking (step = task) |
 | `message` | model's final sentence | step text |
-| `heard` | transcript | *ignored today* (R2.6) |
+| `heard` | transcript | Caption card for 10 seconds; task phase unchanged |
 | `facetime` | – | Calling (*never emitted*) |
 
 Matching on free-text prefixes is fragile; see task T-refactor-events.
@@ -107,8 +107,18 @@ Matching on free-text prefixes is fragile; see task T-refactor-events.
   - Registers Cmd+Shift+Space to focus the island. Hides the Dock icon.
   - IPC: `resize`, `blur`, `phase` (forwarded island → glow).
 - **`preload.ts`** — exposes `window.bar` (`resize`, `blur`, `phase`, `onPhase`).
-- **`App.tsx`** — island UI. One `useReducer` phase machine driven by SSE events plus a 1 s tick that returns Done/Stopped to rest after 6 s. `describe()` turns raw actions into readable steps with macOS key glyphs. A `ResizeObserver` reports content size to main.
+- **`App.tsx`**: compact island and expandable command panel, with task entry, session activity, FaceTime captions, connection feedback and request-error recovery. A `ResizeObserver` reports content size to main. Reduced Motion disables native resize animation.
+- **`state.ts`**: the phase reducer, action descriptions and bounded session activity. Done/Stopped return to rest after 6 seconds; captions expire independently after 10 seconds. A call ending does not hide an active task.
+- **`transport.ts`**: SSE subscription and task/stop requests. Request failures preserve drafts; connection state remains separate from agent state.
+- **`Preview.tsx`**: browser-only, explicitly simulated preview with a state selector. It never contacts the backend or controls the Mac.
 - **`glow.ts` / `glow.css`** — sets `body[data-phase]`; CSS draws the coloured edge light.
+
+### Interface contract
+
+- Preserve the bottom-centred island, keyboard-first task entry, call mode and visible Stop control.
+- Dark graphite surfaces, pale green action accent, platform typography and semantic phase colours. No additional UI library or remote font dependency.
+- Expand upward into one task-focused panel. On narrow screens, reflow controls and keep captions, task details and activity scrollable.
+- Verify empty, running, stopped, success, call, caption, offline and error states; check keyboard focus and reduced motion. Browser preview is illustrative, never proof of a real task or connection.
 
 ### Phase state machine
 
@@ -189,10 +199,10 @@ The terminal that runs the backend needs: Accessibility (clicks, AppleScript UI)
 ## 9. Known gaps vs README / requirements
 
 - Screen sharing on pickup (R5.4) is documented but not triggered.
-- Live caption card (R2.6) is documented but `heard` events are ignored.
+- Live captions (R2.6) now display `heard` events and expire after 10 seconds without changing the task phase.
 - `/voice/token` and the `facetime` event type are unused leftovers from the earlier in-Electron voice design.
 - Phantom's talk-back is one-shot per reply: no interruption/barge-in handling yet, and playback isn't cancelled when the call drops.
-- No automated tests.
+- Frontend reducer tests run with `node --test src/state.test.mjs` from `frontend/` on Node 22.18+. Real FaceTime and computer-control flows still require manual verification.
 - `pnpm install` fails on the lockfile policy on a clean Mac.
 
 ## 10. Design decisions
