@@ -1,62 +1,78 @@
 # phntm
 
-Control your Mac over FaceTime + iMessage.
+### your mac, on call.
 
-## Run
+phntm lives in your mac. it sees your screen, moves your mouse, types on your keyboard, and gets things done while you're nowhere near it. no app to install on your phone. no new account. you facetime it like a friend, and it handles everything like the friend who never says no.
 
-Backend (needs `backend/.env` with `OPENAI_API_KEY`):
+<!-- screenshot 1: the island floating over the desktop -->
+![the island](docs/screenshots/01-island.png)
+
+## what it does
+
+- **call it.** phntm facetimes you, shares its screen, and talks you through every click in real time.
+- **watch it work.** a tiny island floats over everything showing live status — calling, listening, thinking, working — readable from your phone through the shared screen.
+- **talk to it.** say "phantom, …" and it does the thing. say "stop" and it freezes.
+
+a meta internship just went live and you're across town. call your mac and say "apply to the meta swe internship with my resume". phntm opens the posting, fills out the form, attaches your resume, and tells you when it's sent. you got it in before your coffee cooled.
+
+<!-- screenshot 2: facetime call on the phone showing the mac screen -->
+![the call](docs/screenshots/02-call.png)
+
+## run it
+
+backend (needs `backend/.env`):
 
 ```
 cd backend && uv run uvicorn main:app --reload --timeout-graceful-shutdown 2
 ```
 
-Frontend:
+frontend:
 
 ```
 cd frontend && pnpm install && pnpm start
 ```
 
-Type a task in the window, hit Run. The agent screenshots your Mac, asks OpenAI what to do, and clicks/types for you.
+type a task in the island, hit enter. the agent screenshots your mac, asks the model what to do, and clicks and types for you.
 
-macOS will ask for Accessibility and Screen Recording permission for your terminal the first time. Grant both.
+<!-- screenshot 3: the island mid-task, working on step n -->
+![working](docs/screenshots/03-working.png)
 
-## iMessage trigger
+## setup
 
-Text yourself `ft me` and the Mac FaceTimes your phone. Needs:
+`backend/.env`:
 
-- `SELF_NUMBER=+1...` in `backend/.env` (your phone number, the one the Mac should call).
-- Full Disk Access for your terminal (System Settings → Privacy & Security → Full Disk Access), so the backend can read `~/Library/Messages/chat.db`. Restart the backend after granting.
-- Messages in iCloud on, so texts from your phone show up on the Mac.
+```
+OPENAI_API_KEY=sk-...
+SELF_NUMBER=+1...           # the phone the mac should call
+ELEVENLABS_API_KEY=sk_...   # optional — phantom's voice on calls
+ELEVENLABS_VOICE_ID=...     # optional
+```
 
-## The island
+**permissions** — the terminal that runs the backend needs accessibility, screen recording, microphone, and full disk access. macOS asks the first time; grant them all and restart the backend.
 
-The app is a small always-on-top pill at the bottom centre of the screen. It shows one state at a time (Idle, Calling, Listening, Thinking, Working · step N, Done, Error) and grows into a card with a large caption whenever it hears you on a call, then shrinks back. Designed to be read from your phone through the shared screen.
-
-Cmd+Shift+Space focuses it and reveals a text box to type a task at the desk. Enter runs, Esc stops.
-
-The screen edges glow with the same state: white while listening, red while working, amber while calling, green when done. The glow is a click-through window, it never takes focus.
-
-### Talking over FaceTime (BlackHole)
-
-Install two virtual audio devices, then switch the bar to "FaceTime" mode:
+**call audio** — install two virtual audio devices:
 
 ```
 brew install blackhole-2ch blackhole-16ch
 ```
 
-Then in FaceTime's menu bar → Video:
-- Output: **BlackHole 2ch** (your voice from the phone goes to the agent)
-- Microphone: **BlackHole 16ch** (the agent's voice goes to your phone)
+then in facetime's menu bar → video: output → **blackhole 2ch** (your voice to the agent), microphone → **blackhole 16ch** (phantom's voice to you). if facetime has no output option, set the system output to a multi-output device (audio midi setup → + → multi-output device, tick blackhole 2ch and your speakers).
 
-If FaceTime has no Output option, set the system output to a Multi-Output device (Audio MIDI Setup → + → Multi-Output Device, tick BlackHole 2ch and your speakers).
+## how it works
 
-When you text `ft me`, the bar switches to FaceTime mode by itself once the call is placed.
+a fastapi backend dials facetime with applescript, streams call audio to openai's realtime model, and elevenlabs talks back through blackhole 16ch. tasks run on openai's computer-use model: it screenshots, clicks, and types with real input. the electron island floats over everything, and the screen edges glow with the current phase — white listening, red working, amber calling, green done.
 
-## Full remote flow (what `ft me` does now)
+`cmd+shift+space` focuses the island to type at the desk. enter runs, esc stops.
 
-1. You text yourself `ft me`. The Mac FaceTimes your phone and clicks Call.
-2. When you pick up, it routes the call audio to BlackHole 2ch, turns on screen sharing from the menu-bar video controls, and starts listening.
-3. Say **"Phantom, …"** followed by what you want. Only sentences with the name are acted on; everything else is ignored. You get a "🤖 on it" text, then watch the shared screen.
-4. Any other text you send yourself is also run as a task.
+<!-- screenshot 4: the edge glow around the screen -->
+![the glow](docs/screenshots/04-glow.png)
 
-Needs for the terminal that runs the backend: Full Disk Access, Accessibility, Microphone, Screen Recording.
+## docs
+
+[requirements](docs/requirements.md) · [design](docs/design.md) · [tasks](docs/tasks.md)
+
+---
+
+text it\* (\*once the imessage trigger is back). call it. forget it.
+
+**phntm. your mac, on call.**
