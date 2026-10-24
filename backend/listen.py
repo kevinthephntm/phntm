@@ -10,6 +10,7 @@ import sounddevice as sd
 from openai import OpenAI
 
 import imessage
+import speak
 from voice import INSTRUCTIONS, MODEL, TOOLS
 
 API = "http://127.0.0.1:8000"
@@ -64,6 +65,9 @@ def listen(number: str, emit: Callable[[dict], None], in_call: Callable[[], bool
             match ev.type:
                 case "conversation.item.input_audio_transcription.completed":
                     emit({"type": "heard", "text": ev.transcript})
+                case "response.output_text.done":
+                    emit({"type": "message", "text": f"phantom: {ev.text}"})
+                    threading.Thread(target=speak.speak, args=(ev.text,), daemon=True).start()
                 case "response.function_call_arguments.done":
                     if ev.name == "run_task":
                         task = json.loads(ev.arguments)["task"]
