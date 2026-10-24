@@ -38,6 +38,14 @@ const config: ForgeConfig = {
               js: './src/preload.ts',
             },
           },
+          {
+            html: './src/glow.html',
+            js: './src/glow.ts',
+            name: 'glow_window',
+            preload: {
+              js: './src/preload.ts',
+            },
+          },
         ],
       },
     }),
