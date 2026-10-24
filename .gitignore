@@ -144,3 +144,10 @@ vite.config.ts.timestamp-*
 
 # Electron-Forge
 out/
+
+# Python
+.venv/
+__pycache__/
+
+# Remember plugin
+.remember/
