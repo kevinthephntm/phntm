@@ -4,9 +4,6 @@
 
 phntm lives in your mac. it sees your screen, moves your mouse, types on your keyboard, and gets things done while you're nowhere near it. no app to install on your phone. no new account. you facetime it like a friend, and it handles everything like the friend who never says no.
 
-<!-- screenshot 1: the island floating over the desktop -->
-![the island](docs/screenshots/01-island.png)
-
 ## what it does
 
 - **call it.** phntm facetimes you, shares its screen, and talks you through every click in real time.
@@ -15,8 +12,17 @@ phntm lives in your mac. it sees your screen, moves your mouse, types on your ke
 
 a meta internship just went live and you're across town. call your mac and say "apply to the meta swe internship with my resume". phntm opens the posting, fills out the form, attaches your resume, and tells you when it's sent. you got it in before your coffee cooled.
 
-<!-- screenshot 2: facetime call on the phone showing the mac screen -->
-![the call](docs/screenshots/02-call.png)
+## screenshots
+
+![the command panel](docs/screenshots/01-panel.png)
+
+<p align="center">
+  <img src="docs/screenshots/02-applying.jpg" alt="applying to a meta internship" width="32%">
+  <img src="docs/screenshots/03-submitting-assignment.jpg" alt="submitting an assignment" width="32%">
+  <img src="docs/screenshots/04-tiktok.jpg" alt="the mac's screen shared on a facetime call" width="32%">
+</p>
+
+<p align="center"><sub>the command panel · applying to a meta internship · submitting an assignment · driving the mac over facetime</sub></p>
 
 ## run it
 
@@ -33,9 +39,6 @@ cd frontend && pnpm install && pnpm start
 ```
 
 type a task in the island, hit enter. the agent screenshots your mac, asks the model what to do, and clicks and types for you.
-
-<!-- screenshot 3: the island mid-task, working on step n -->
-![working](docs/screenshots/03-working.png)
 
 ## setup
 
@@ -63,9 +66,6 @@ then in facetime's menu bar → video: output → **blackhole 2ch** (your voice 
 a fastapi backend dials facetime with applescript, streams call audio to openai's realtime model, and elevenlabs talks back through blackhole 16ch. tasks run on openai's computer-use model: it screenshots, clicks, and types with real input. the electron island floats over everything, and the screen edges glow with the current phase — white listening, red working, amber calling, green done.
 
 `cmd+shift+space` focuses the island to type at the desk. enter runs, esc stops.
-
-<!-- screenshot 4: the edge glow around the screen -->
-![the glow](docs/screenshots/04-glow.png)
 
 ## docs
 
