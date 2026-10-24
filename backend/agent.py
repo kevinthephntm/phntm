@@ -23,7 +23,11 @@ MAX_TURNS = 60
 
 INSTRUCTIONS = f"""You are controlling a real macOS desktop ({WIDTH}x{HEIGHT}).
 To open or switch to an app, ALWAYS call open_app with its exact name (e.g. "Google Chrome", "Notes", "Safari"). Never use Spotlight.
+To go to a website, ALWAYS call open_url with the full URL instead of typing in the address bar.
+Each model turn is slow, so batch several actions into one turn whenever the outcome is predictable (click a field, type, press enter).
 Use macOS conventions: Cmd shortcuts, Cmd+L for the browser address bar.
+Ignore the small dark pill or card at the bottom centre of the screen and any coloured glow around the screen edges; they are the assistant's own status display, never click them.
+To share the Mac screen in the FaceTime call: move the mouse to the very top edge of the screen so the menu bar appears, click the green FaceTime video icon in the menu bar, click the Screen Share button in that panel, then click 'Share Entire Screen' at the top right of the screen.
 Act decisively. Do not ask for confirmation. When the task is finished, reply with one short sentence saying what you did."""
 
 TOOLS = [
@@ -36,6 +40,18 @@ TOOLS = [
             "type": "object",
             "properties": {"name": {"type": "string"}},
             "required": ["name"],
+            "additionalProperties": False,
+        },
+        "strict": True,
+    },
+    {
+        "type": "function",
+        "name": "open_url",
+        "description": "Open a URL in the default browser. Use this instead of typing in the address bar.",
+        "parameters": {
+            "type": "object",
+            "properties": {"url": {"type": "string"}},
+            "required": ["url"],
             "additionalProperties": False,
         },
         "strict": True,
@@ -62,8 +78,8 @@ def key(name: str) -> str:
 def screenshot_data_url() -> str:
     img = pyautogui.screenshot().resize((WIDTH, HEIGHT))
     buf = io.BytesIO()
-    img.save(buf, "PNG")
-    return "data:image/png;base64," + base64.b64encode(buf.getvalue()).decode()
+    img.convert("RGB").save(buf, "JPEG", quality=60)
+    return "data:image/jpeg;base64," + base64.b64encode(buf.getvalue()).decode()
 
 
 def execute(a: ComputerAction) -> None:
@@ -110,6 +126,12 @@ def open_app(name: str) -> str:
     return "opened" if r.returncode == 0 else f"failed: {r.stderr.strip()}"
 
 
+def open_url(url: str) -> str:
+    r = subprocess.run(["open", url], capture_output=True, text=True)
+    time.sleep(1.5)
+    return "opened" if r.returncode == 0 else f"failed: {r.stderr.strip()}"
+
+
 def describe(a: ComputerAction) -> str:
     fields = a.model_dump(exclude={"type"}, exclude_none=True)
     return a.type if not fields else f"{a.type} {json.dumps(fields)}"
@@ -138,15 +160,15 @@ def run_task(task: str, emit: Emit, stop: threading.Event) -> None:
                         if c.type == "output_text":
                             emit({"type": "message", "text": c.text})
                 elif item.type == "function_call":
-                    assert item.name == "open_app", item.name
-                    name = json.loads(item.arguments)["name"]
-                    emit({"type": "action", "text": f"open_app {name}"})
-                    outputs.append({"type": "function_call_output", "call_id": item.call_id, "output": open_app(name)})
+                    arg = next(iter(json.loads(item.arguments).values()))
+                    emit({"type": "action", "text": f"{item.name} {arg}"})
+                    fn = {"open_app": open_app, "open_url": open_url}[item.name]
+                    outputs.append({"type": "function_call_output", "call_id": item.call_id, "output": fn(arg)})
                 elif isinstance(item, ResponseComputerToolCall):
                     for a in item.actions or [item.action]:
                         emit({"type": "action", "text": describe(a)})
                         execute(a)
-                    time.sleep(0.8)
+                    time.sleep(0.4)
                     outputs.append({
                         "type": "computer_call_output",
                         "call_id": item.call_id,
