@@ -38,6 +38,9 @@ flowchart LR
   F --> FT
   FT -- caller audio --> BH2 --> L
   L -- run_task --> API
+  L -- reply text --> EL[ElevenLabs TTS]
+  EL --> BH16[BlackHole 16ch]
+  BH16 --> FT
   W -- task --> API
   API --> A
   A <--> OAI
@@ -58,7 +61,8 @@ flowchart LR
 | `agent.py` | Computer-use loop (R1). OpenAI Responses API with the `computer` tool + `open_app` / `open_url` functions, chained via `previous_response_id`. Executes actions with `pyautogui`; key names mapped to macOS (`cmd` → `command`, `alt` → `option`). Model from `OPENAI_MODEL`. Max 60 turns. |
 | `watcher.py` | iMessage trigger (R4). Read-only SQLite on `chat.db`, polling every 1 s for `is_from_me = 1` rows in the self-chat newer than the last seen `ROWID`. Decodes `attributedBody` typedstream when `text` is null. Starts the call flow or posts a task. |
 | `facetime.py` | FaceTime automation (R5). AppleScript via `osascript` for dialing, finding the unnamed "Call" button, detecting connection ("Take Live Photo" button), routing output to BlackHole 2ch from the Video menu, and `in_call()` detection. Camera-off uses real mouse clicks because Control Center ignores Accessibility clicks. |
-| `listen.py` | Voice on the call (R6). Streams 24 kHz mono int16 from BlackHole 2ch into an OpenAI Realtime session (semantic VAD, `gpt-4o-transcribe`, text output). Handles `run_task` / `stop_task` tool calls by POSTing to its own API. A hang-up watcher polls `in_call()` every 5 s and closes the session when the call drops. |
+| `listen.py` | Voice on the call (R6). Streams 24 kHz mono int16 from BlackHole 2ch into an OpenAI Realtime session (semantic VAD, `gpt-4o-transcribe`, text output). Handles `run_task` / `stop_task` tool calls by POSTing to its own API. A hang-up watcher polls `in_call()` every 5 s and closes the session when the call drops. Phantom's text replies go to `speak.speak` on a thread. |
+| `speak.py` | Talk-back (R6.6). ElevenLabs text-to-speech (`output_format=pcm_24000`, `eleven_flash_v2_5` by default) streamed into a `sounddevice.RawOutputStream` on BlackHole 16ch — FaceTime's microphone, so the caller hears it. No-ops without `ELEVENLABS_API_KEY`. |
 | `voice.py` | Shared Realtime config (Phantom persona, tools) and `GET /voice/token`, which mints short-lived client secrets so the API key never reaches Electron. Currently unused by the frontend. |
 | `imessage.py` | `send(number, text)` via AppleScript to Messages. |
 
@@ -168,7 +172,8 @@ Cmd+Shift+Space → type → Enter → `POST /task` → same agent loop → even
 
 - **OpenAI Responses API** with the `computer` tool (model via `OPENAI_MODEL`).
 - **OpenAI Realtime** (`gpt-realtime-2.1`, `gpt-4o-transcribe`, semantic VAD).
-- **BlackHole 2ch** (call → backend) and **BlackHole 16ch** (agent voice → call, reserved for R6.6).
+- **ElevenLabs TTS** for Phantom's replies to the caller (`ELEVENLABS_API_KEY`, optional `ELEVENLABS_VOICE_ID` / `ELEVENLABS_MODEL`).
+- **BlackHole 2ch** (call → backend) and **BlackHole 16ch** (agent voice → call).
 - macOS: AppleScript / System Events, `open`, Control Center, Messages `chat.db`.
 
 ## 7. Permissions
@@ -186,6 +191,7 @@ The terminal that runs the backend needs: Accessibility (clicks, AppleScript UI)
 - Screen sharing on pickup (R5.4) is documented but not triggered.
 - Live caption card (R2.6) is documented but `heard` events are ignored.
 - `/voice/token` and the `facetime` event type are unused leftovers from the earlier in-Electron voice design.
+- Phantom's talk-back is one-shot per reply: no interruption/barge-in handling yet, and playback isn't cancelled when the call drops.
 - No automated tests.
 - `pnpm install` fails on the lockfile policy on a clean Mac.
 
@@ -194,6 +200,7 @@ The terminal that runs the backend needs: Accessibility (clicks, AppleScript UI)
 | Decision | Why |
 |---|---|
 | OpenAI Realtime instead of local STT/TTS | One service does VAD + transcription + intent; much less glue. |
+| ElevenLabs for talk-back | The Realtime session is text-only, so speaking means a TTS call; `pcm_24000` streams straight into BlackHole 16ch with no decoding step. |
 | Voice runs in the backend, not Electron | Backend owns the BlackHole input and the call lifecycle; key stays server-side. |
 | Electron island instead of a web dashboard | Must be visible on the shared screen, above fullscreen apps, and readable from a phone. |
 | SSE instead of WebSockets | Events are one-way; commands are plain POSTs. |

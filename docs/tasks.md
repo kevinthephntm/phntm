@@ -16,6 +16,7 @@ Legend: `[x]` done · `[ ]` todo · **P0** blocks the core remote flow · **P1**
 - [x] Edge glow window — R2.5
 - [x] Bottom-centre island with phase state machine and readable steps — R2.1–2.4, R3
 - [x] README for the island and remote flow — R7.3
+- [x] Agent voice back to the caller: `speak.py` plays ElevenLabs TTS into BlackHole 16ch when Phantom replies — R6.6 (needs `ELEVENLABS_API_KEY` to run)
 
 ## P0 — make the remote flow match the README
 
@@ -46,7 +47,7 @@ Legend: `[x]` done · `[ ]` todo · **P0** blocks the core remote flow · **P1**
 
 ## P2 — polish and cleanup
 
-- [ ] **Agent voice back to the caller via BlackHole 16ch** — R6.6
+- [ ] Barge-in for talk-back: cancel/pause ElevenLabs playback when the caller speaks over Phantom — R6.6
 - [ ] Remove or use leftovers: `GET /voice/token`, `facetime` event type — design §9
 - [ ] Tests: unit tests for `decode_body`, `agent.key`/`describe`, and the `App.tsx` reducer; a fake event stream for UI work without a real call.
 - [ ] Fill in `pyproject.toml` / `package.json` descriptions; add a backend linter (ruff).

@@ -70,7 +70,7 @@ Status: **Done** = in `main` today, **Partial** = some criteria met, **Todo** = 
 3. WHEN the user asks to stop THE SYSTEM SHALL call `stop_task`.
 4. WHEN speech is just conversation THE SYSTEM SHALL do nothing.
 5. WHEN a voice task starts THE SYSTEM SHALL text `🤖 on it: <task>`.
-6. **Todo (optional):** THE SYSTEM SHALL speak short replies back to the caller through BlackHole 16ch. *(Realtime session is text-only today.)*
+6. **In progress:** WHEN Phantom replies on a call THE SYSTEM SHALL speak the reply to the caller with ElevenLabs TTS through BlackHole 16ch. *(Code in place — `speak.py` — needs `ELEVENLABS_API_KEY`.)*
 
 ## R7. Setup and permissions — Partial
 
@@ -86,11 +86,11 @@ Status: **Done** = in `main` today, **Partial** = some criteria met, **Todo** = 
 - **N2 Latency:** batch predictable actions in one model turn; ~0.4 s settle after actions; screenshots sent as JPEG q60 at screen resolution.
 - **N3 Safety:** the real OpenAI key never reaches the Electron app (`/voice/token` mints short-lived keys). **Todo:** the local API (`/task`, `/stop`, `/event`) has no auth and `CORS: *` — any local process or web page can start tasks. Restrict origin and add a shared token.
 - **N4 Single user:** one task at a time; one status-stream client (see design §4).
-- **N5 Config:** `OPENAI_API_KEY`, `SELF_NUMBER`, optional `OPENAI_MODEL` in `backend/.env` (never committed).
+- **N5 Config:** `OPENAI_API_KEY`, `SELF_NUMBER`, optional `OPENAI_MODEL`, `ELEVENLABS_API_KEY`, `ELEVENLABS_VOICE_ID`, `ELEVENLABS_MODEL` in `backend/.env` (never committed).
 
 ## Out of scope (for now)
 
 - Windows / Linux support, multi-monitor.
 - Texting or calling anyone other than yourself.
 - A web dashboard (the Electron island replaces it).
-- Local speech-to-text / text-to-speech (OpenAI Realtime is used instead).
+- Local speech-to-text / text-to-speech (OpenAI Realtime for listening, ElevenLabs for speaking).
