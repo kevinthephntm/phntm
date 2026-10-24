@@ -4,7 +4,7 @@ const API = 'http://127.0.0.1:8000';
 const RESULT_TTL_MS = 6000;
 
 type Event = {
-  type: 'status' | 'action' | 'message' | 'facetime' | 'heard';
+  type: 'status' | 'action' | 'message' | 'heard';
   text: string;
 };
 type Phase =
@@ -127,8 +127,6 @@ function reduce(s: State, a: Action): State {
   switch (ev.type) {
     case 'heard':
       return s;
-    case 'facetime':
-      return { ...s, phase: 'calling', step: '', touched: now };
     case 'message':
       if (t.startsWith('task: ') || t.startsWith('task from iMessage: '))
         return {

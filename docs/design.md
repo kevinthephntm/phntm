@@ -63,7 +63,7 @@ flowchart LR
 | `facetime.py` | FaceTime automation (R5). AppleScript via `osascript` for dialing, finding the unnamed "Call" button, detecting connection ("Take Live Photo" button), routing output to BlackHole 2ch from the Video menu, and `in_call()` detection. Camera-off uses real mouse clicks because Control Center ignores Accessibility clicks. |
 | `listen.py` | Voice on the call (R6). Streams 24 kHz mono int16 from BlackHole 2ch into an OpenAI Realtime session (semantic VAD, `gpt-4o-transcribe`, text output). Handles `run_task` / `stop_task` tool calls by POSTing to its own API. A hang-up watcher polls `in_call()` every 5 s and closes the session when the call drops. Phantom's text replies go to `speak.speak` on a thread. |
 | `speak.py` | Talk-back (R6.6). ElevenLabs text-to-speech (`output_format=pcm_24000`, `eleven_flash_v2_5` by default) streamed into a `sounddevice.RawOutputStream` on BlackHole 16ch — FaceTime's microphone, so the caller hears it. No-ops without `ELEVENLABS_API_KEY`. |
-| `voice.py` | Shared Realtime config (Phantom persona, tools) and `GET /voice/token`, which mints short-lived client secrets so the API key never reaches Electron. Currently unused by the frontend. |
+| `voice.py` | Shared Realtime config (Phantom persona, tools) used by `listen.py`. |
 | `imessage.py` | `send(number, text)` via AppleScript to Messages. |
 
 ### HTTP API
@@ -75,7 +75,6 @@ flowchart LR
 | GET | `/events` | – | SSE stream of events; `: ping` every 1 s when idle. |
 | POST | `/event` | `{type, text}` | Inject an event (debug / external sources). |
 | GET | `/health` | – | `{ok: true}`. |
-| GET | `/voice/token` | – | Short-lived Realtime client secret. |
 
 ### Event protocol
 
@@ -190,7 +189,6 @@ The terminal that runs the backend needs: Accessibility (clicks, AppleScript UI)
 
 - Screen sharing on pickup (R5.4) is documented but not triggered.
 - Live caption card (R2.6) is documented but `heard` events are ignored.
-- `/voice/token` and the `facetime` event type are unused leftovers from the earlier in-Electron voice design.
 - Phantom's talk-back is one-shot per reply: no interruption/barge-in handling yet, and playback isn't cancelled when the call drops.
 - No automated tests.
 - `pnpm install` fails on the lockfile policy on a clean Mac.

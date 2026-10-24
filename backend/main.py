@@ -3,18 +3,16 @@ import json
 import queue
 import threading
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 from agent import run_task
-from voice import router as voice_router
 from watcher import watch
 
 app = FastAPI()
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
-app.include_router(voice_router)
 
 events: queue.Queue[dict] = queue.Queue()
 stop = threading.Event()

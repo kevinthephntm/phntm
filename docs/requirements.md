@@ -77,7 +77,7 @@ Status: **Done** = in `main` today, **Partial** = some criteria met, **Todo** = 
 1. THE SYSTEM SHALL run with `uv run uvicorn main:app` (backend) and `pnpm start` (frontend).
 2. THE SYSTEM SHALL fail fast with a clear message if `OPENAI_API_KEY` is missing.
 3. Docs SHALL list every macOS permission needed: Accessibility, Screen Recording, Microphone, Full Disk Access, and the BlackHole 2ch / 16ch devices.
-4. **Todo:** `pnpm install` SHALL succeed on a clean Mac (currently fails on a lockfile policy error).
+4. **Done:** `pnpm install` SHALL succeed on a clean Mac (verified: installs, then `pnpm typecheck` passes).
 5. **Todo:** THE SYSTEM SHALL report missing permissions at startup (e.g. via `/health`) instead of failing mid-task.
 
 ## Non-functional requirements

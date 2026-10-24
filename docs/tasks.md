@@ -17,6 +17,8 @@ Legend: `[x]` done · `[ ]` todo · **P0** blocks the core remote flow · **P1**
 - [x] Bottom-centre island with phase state machine and readable steps — R2.1–2.4, R3
 - [x] README for the island and remote flow — R7.3
 - [x] Agent voice back to the caller: `speak.py` plays ElevenLabs TTS into BlackHole 16ch when Phantom replies — R6.6 (needs `ELEVENLABS_API_KEY` to run)
+- [x] Removed leftovers from the earlier in-Electron voice design (`/voice/token`, `facetime` event type)
+- [x] `pnpm install` works on a clean Mac — R7.4
 
 ## P0 — make the remote flow match the README
 
@@ -24,9 +26,6 @@ Legend: `[x]` done · `[ ]` todo · **P0** blocks the core remote flow · **P1**
   - After `facetime.wait_connected()` in `watcher.start_call`, share the entire screen. Either a deterministic AppleScript/pyautogui routine in `facetime.py` (like `camera_off`) or a fixed agent task using the existing prompt instructions.
   - Emit `status: sharing screen` / `could not share screen: …`.
   - Done when: texting `ft me` and picking up shows the Mac screen on the phone with no manual steps.
-- [ ] **Fix `pnpm install` lockfile policy error on a clean Mac** — R7.4
-  - Reproduce, then fix `pnpm-workspace.yaml` / lockfile or pin the pnpm version in `devEngines`.
-  - Done when: `pnpm install && pnpm typecheck && pnpm lint` pass from a fresh clone.
 
 ## P1 — reliability and safety
 
@@ -48,7 +47,6 @@ Legend: `[x]` done · `[ ]` todo · **P0** blocks the core remote flow · **P1**
 ## P2 — polish and cleanup
 
 - [ ] Barge-in for talk-back: cancel/pause ElevenLabs playback when the caller speaks over Phantom — R6.6
-- [ ] Remove or use leftovers: `GET /voice/token`, `facetime` event type — design §9
 - [ ] Tests: unit tests for `decode_body`, `agent.key`/`describe`, and the `App.tsx` reducer; a fake event stream for UI work without a real call.
 - [ ] Fill in `pyproject.toml` / `package.json` descriptions; add a backend linter (ruff).
 - [ ] Multi-monitor: place island/glow on the display being shared — N1
