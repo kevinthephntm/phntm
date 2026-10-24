@@ -7,7 +7,7 @@ Control your Mac over FaceTime + iMessage.
 Backend (needs `backend/.env` with `OPENAI_API_KEY`):
 
 ```
-cd backend && uv run uvicorn main:app --reload
+cd backend && uv run uvicorn main:app --reload --timeout-graceful-shutdown 2
 ```
 
 Frontend:
@@ -28,11 +28,13 @@ Text yourself `ft me` and the Mac FaceTimes your phone. Needs:
 - Full Disk Access for your terminal (System Settings → Privacy & Security → Full Disk Access), so the backend can read `~/Library/Messages/chat.db`. Restart the backend after granting.
 - Messages in iCloud on, so texts from your phone show up on the Mac.
 
-## Voice + floating bar
+## The island
 
-The app is a small always-on-top bar (Cmd+Shift+Space brings it forward). Click the mic to talk; it uses the OpenAI Realtime API and calls the backend when you ask for something. Type into the bar if you prefer.
+The app is a small always-on-top pill at the bottom centre of the screen. It shows one state at a time (Idle, Calling, Listening, Thinking, Working · step N, Done, Error) and grows into a card with a large caption whenever it hears you on a call, then shrinks back. Designed to be read from your phone through the shared screen.
 
-The bar is hidden from screenshots, so the agent never sees or clicks it.
+Cmd+Shift+Space focuses it and reveals a text box to type a task at the desk. Enter runs, Esc stops.
+
+The screen edges glow with the same state: white while listening, red while working, amber while calling, green when done. The glow is a click-through window, it never takes focus.
 
 ### Talking over FaceTime (BlackHole)
 
@@ -49,3 +51,12 @@ Then in FaceTime's menu bar → Video:
 If FaceTime has no Output option, set the system output to a Multi-Output device (Audio MIDI Setup → + → Multi-Output Device, tick BlackHole 2ch and your speakers).
 
 When you text `ft me`, the bar switches to FaceTime mode by itself once the call is placed.
+
+## Full remote flow (what `ft me` does now)
+
+1. You text yourself `ft me`. The Mac FaceTimes your phone and clicks Call.
+2. When you pick up, it routes the call audio to BlackHole 2ch, turns on screen sharing from the menu-bar video controls, and starts listening.
+3. Say **"Phantom, …"** followed by what you want. Only sentences with the name are acted on; everything else is ignored. You get a "🤖 on it" text, then watch the shared screen.
+4. Any other text you send yourself is also run as a task.
+
+Needs for the terminal that runs the backend: Full Disk Access, Accessibility, Microphone, Screen Recording.
