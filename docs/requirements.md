@@ -28,10 +28,10 @@ Status: **Done** = in `main` today, **Partial** = some criteria met, **Todo** = 
 
 1. THE SYSTEM SHALL show an always-on-top pill at the bottom centre of the primary display, on every Space including fullscreen apps.
 2. THE SYSTEM SHALL show exactly one phase at a time: Idle, Calling, Listening, Thinking, Working · step N, Done, Stopped, Error.
-3. WHEN the agent performs an action THE SYSTEM SHALL show a human-readable step (e.g. "Typing “hello”", "Pressing ⌘L", "Opening github.com").
+3. WHEN the agent performs an action THE SYSTEM SHALL show a human-readable step (e.g. "typing “hello”", "pressing ⌘L", "opening github.com").
 4. WHEN a task ends in Done or Stopped THE SYSTEM SHALL return to Idle (or Listening if on a call) after 6 seconds.
 5. THE SYSTEM SHALL light the screen edges to match the phase (white listening, red working, amber calling, green done) in a click-through window that never takes focus.
-6. **Todo:** WHEN the caller's speech is transcribed during a call THE SYSTEM SHALL grow the island into a card with a large caption of what was heard, then shrink back. *(Backend emits `heard` events; the UI currently ignores them.)*
+6. WHEN the caller's speech is transcribed during a call THE SYSTEM SHALL grow the island into a card with a large caption of what was heard, then shrink back after 10 seconds unless the user has opened the panel.
 7. Text SHALL be large and high-contrast enough to read on a phone screen through FaceTime screen share.
 
 ## R3. Type a task at the desk — Done

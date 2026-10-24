@@ -39,8 +39,8 @@ const createGlow = (): BrowserWindow => {
 
 const createIsland = (glow: BrowserWindow): void => {
   const win = new BrowserWindow({
-    width: 160,
-    height: 44,
+    width: 338,
+    height: 84,
     frame: false,
     transparent: true,
     resizable: false,
@@ -55,6 +55,8 @@ const createIsland = (glow: BrowserWindow): void => {
   // bottom-centre, growing upwards; the renderer reports its content size
   const place = (width: number, height: number, animate: boolean) => {
     const { workArea } = screen.getPrimaryDisplay();
+    width = Math.min(Math.max(width, 180), workArea.width);
+    height = Math.min(Math.max(height, 64), workArea.height - MARGIN);
     win.setBounds(
       {
         x: Math.round(workArea.x + (workArea.width - width) / 2),
@@ -65,15 +67,16 @@ const createIsland = (glow: BrowserWindow): void => {
       animate,
     );
   };
-  place(160, 44, false);
+  place(338, 84, false);
   win.setAlwaysOnTop(true, 'screen-saver', 1);
   win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
   win.webContents.on('console-message', (e) =>
     console.log('[renderer]', e.level, e.message),
   );
-  ipcMain.on('resize', (_e, w: number, h: number) =>
-    place(Math.ceil(w), Math.ceil(h), true),
-  );
+  ipcMain.on('resize', (_e, w: number, h: number, animate: boolean) => {
+    if (Number.isFinite(w) && Number.isFinite(h))
+      place(Math.ceil(w), Math.ceil(h), animate);
+  });
   ipcMain.on('blur', () => win.blur());
   ipcMain.on('phase', (_e, phase: string) =>
     glow.webContents.send('phase', phase),
@@ -83,6 +86,12 @@ const createIsland = (glow: BrowserWindow): void => {
     win.show();
     win.focus();
   });
+  globalShortcut.register('CommandOrControl+Shift+Escape', () => {
+    win.show();
+    win.focus();
+    win.webContents.sendInputEvent({ type: 'keyDown', keyCode: 'Escape' });
+    win.webContents.sendInputEvent({ type: 'keyUp', keyCode: 'Escape' });
+  });
 };
 
 app.whenReady().then(() => {
@@ -91,3 +100,4 @@ app.whenReady().then(() => {
 });
 
 app.on('window-all-closed', () => app.quit());
+app.on('will-quit', () => globalShortcut.unregisterAll());

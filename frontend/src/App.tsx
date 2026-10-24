@@ -1,212 +1,86 @@
-import { useEffect, useReducer, useRef, useState } from 'react';
+import {
+  useEffect,
+  useReducer,
+  useRef,
+  useState,
+  type CSSProperties,
+} from 'react';
+import { Icon } from './Icon';
+import { initial, LABEL, reduce } from './state';
+import { liveTransport, type Connection, type Transport } from './transport';
 
-const API = 'http://127.0.0.1:8000';
-const RESULT_TTL_MS = 6000;
+const suggestions = [
+  {
+    title: 'fresh start era',
+    text: 'open notes and start a new note for today.',
+    icon: 'arrow' as const,
+  },
+  {
+    title: 'what’s the plan',
+    text: 'open calendar and show me this week.',
+    icon: 'history' as const,
+  },
+];
 
-type Event = {
-  type: 'status' | 'action' | 'message' | 'heard';
-  text: string;
-};
-type Phase =
-  | 'idle'
-  | 'calling'
-  | 'listening'
-  | 'thinking'
-  | 'working'
-  | 'done'
-  | 'stopped'
-  | 'error';
-
-type State = {
-  phase: Phase;
-  inCall: boolean;
-  step: string;
-  steps: number;
-  touched: number;
-};
-type Action =
-  | { kind: 'event'; ev: Event; now: number }
-  | { kind: 'tick'; now: number };
-
-const LABEL: Record<Phase, string> = {
-  idle: 'Idle',
-  calling: 'Calling',
-  listening: 'Listening',
-  thinking: 'Thinking',
-  working: 'Working',
-  done: 'Done',
-  stopped: 'Stopped',
-  error: 'Error',
-};
-
-const KEYS: Record<string, string> = {
-  cmd: '⌘',
-  command: '⌘',
-  super: '⌘',
-  meta: '⌘',
-  shift: '⇧',
-  alt: '⌥',
-  option: '⌥',
-  ctrl: '⌃',
-  control: '⌃',
-  enter: '↩',
-  return: '↩',
-  esc: '⎋',
-  escape: '⎋',
-  space: '␣',
-  tab: '⇥',
-  backspace: '⌫',
-  delete: '⌦',
-  arrowup: '↑',
-  arrowdown: '↓',
-  arrowleft: '←',
-  arrowright: '→',
-  up: '↑',
-  down: '↓',
-  left: '←',
-  right: '→',
-};
-
-function describe(action: string): string {
-  const i = action.indexOf(' ');
-  const kind = i === -1 ? action : action.slice(0, i);
-  const rest = i === -1 ? '' : action.slice(i + 1);
-  const args = rest.startsWith('{')
-    ? (JSON.parse(rest) as { text?: string; keys?: string[] })
-    : {};
-  switch (kind) {
-    case 'click':
-      return 'Clicking';
-    case 'double_click':
-      return 'Double-clicking';
-    case 'type':
-      return `Typing “${args.text ?? ''}”`;
-    case 'keypress':
-      return `Pressing ${(args.keys ?? []).map((k) => KEYS[k.toLowerCase()] ?? k.toUpperCase()).join('')}`;
-    case 'scroll':
-      return 'Scrolling';
-    case 'drag':
-      return 'Dragging';
-    case 'move':
-      return 'Moving the cursor';
-    case 'wait':
-      return 'Waiting for the screen';
-    case 'screenshot':
-      return 'Looking at the screen';
-    case 'open_app':
-      return `Opening ${rest}`;
-    case 'open_url':
-      return `Opening ${rest.replace(/^https?:\/\//, '').split('/')[0]}`;
-    default:
-      return action;
-  }
-}
-
-const initial: State = {
-  phase: 'idle',
-  inCall: false,
-  step: '',
-  steps: 0,
-  touched: 0,
-};
-
-function reduce(s: State, a: Action): State {
-  if (a.kind === 'tick') {
-    const resting = s.phase === 'done' || s.phase === 'stopped';
-    if (resting && a.now - s.touched > RESULT_TTL_MS)
-      return {
-        ...s,
-        phase: s.inCall ? 'listening' : 'idle',
-        step: '',
-        steps: 0,
-      };
-    return s;
-  }
-  const { ev, now } = a;
-  const t = ev.text;
-  switch (ev.type) {
-    case 'heard':
-      return s;
-    case 'message':
-      if (t.startsWith('task: ') || t.startsWith('task from iMessage: '))
-        return {
-          ...s,
-          phase: 'thinking',
-          step: t.slice(t.indexOf(': ') + 2),
-          steps: 0,
-          touched: now,
-        };
-      return { ...s, step: t, touched: now };
-    case 'action':
-      return {
-        ...s,
-        phase: 'working',
-        step: describe(t),
-        steps: s.steps + 1,
-        touched: now,
-      };
-    case 'status':
-      if (t === 'running')
-        return { ...s, phase: 'thinking', steps: 0, touched: now };
-      if (t === 'done') return { ...s, phase: 'done', touched: now };
-      if (t.startsWith('stopped'))
-        return { ...s, phase: 'stopped', step: '', touched: now };
-      if (
-        t.startsWith('error') ||
-        t.startsWith('call failed') ||
-        t.startsWith('iMessage watch off')
-      )
-        return { ...s, phase: 'error', step: t, touched: now };
-      if (t.startsWith('calling'))
-        return { ...s, phase: 'calling', inCall: true, step: '', touched: now };
-      if (t === 'listening on the FaceTime call')
-        return {
-          ...s,
-          phase: 'listening',
-          inCall: true,
-          step: '',
-          touched: now,
-        };
-      if (t === 'call ended')
-        return { ...s, phase: 'idle', inCall: false, step: '', touched: now };
-      if (t.startsWith('watching iMessage'))
-        return { ...s, phase: 'idle', touched: now };
-      return s;
-  }
-}
-
-export function App() {
+export function App({
+  transport = liveTransport,
+  preview = false,
+}: {
+  transport?: Transport;
+  preview?: boolean;
+}) {
   const [s, dispatch] = useReducer(reduce, initial);
   const [text, setText] = useState('');
-  const [editing, setEditing] = useState(false);
+  const [editing, setEditing] = useState(preview);
+  const [history, setHistory] = useState(false);
+  const [help, setHelp] = useState(false);
+  const [connection, setConnection] = useState<Connection>('connecting');
+  const [reconnect, setReconnect] = useState(0);
+  const [pending, setPending] = useState<'run' | 'stop' | null>(null);
+  const [error, setError] = useState('');
+  const [dismissedAt, setDismissedAt] = useState(-1);
   const root = useRef<HTMLDivElement>(null);
+  const input = useRef<HTMLTextAreaElement>(null);
+  const toggle = useRef<HTMLButtonElement>(null);
+  const request = useRef(false);
   const busy = s.phase === 'thinking' || s.phase === 'working';
+  const expanded =
+    editing ||
+    Boolean(s.caption && s.captionAt > dismissedAt) ||
+    (s.phase === 'error' && s.touched > dismissedAt);
+  const online = connection === 'connected';
+  const status = online
+    ? LABEL[s.phase]
+    : connection === 'connecting'
+      ? 'connecting…'
+      : 'lost the connection';
 
   useEffect(() => {
-    const es = new EventSource(`${API}/events`);
-    es.onmessage = (e) =>
-      dispatch({
-        kind: 'event',
-        ev: JSON.parse(e.data) as Event,
-        now: Date.now(),
-      });
+    return transport.subscribe(
+      (ev) => dispatch({ kind: 'event', ev, now: Date.now() }),
+      setConnection,
+    );
+  }, [transport, reconnect]);
+
+  useEffect(() => {
     const timer = setInterval(
       () => dispatch({ kind: 'tick', now: Date.now() }),
-      1000,
+      500,
     );
-    return () => {
-      es.close();
-      clearInterval(timer);
-    };
+    return () => clearInterval(timer);
   }, []);
 
   useEffect(() => {
-    const el = root.current!;
+    if (preview) return;
     const ro = new ResizeObserver(() => {
-      const r = el.getBoundingClientRect();
-      window.bar.resize(r.width, r.height);
+      const r = root.current!.getBoundingClientRect();
+      window.bar?.resize(
+        r.width,
+        r.height,
+        !window.matchMedia('(prefers-reduced-motion: reduce)').matches,
+      );
     });
-    ro.observe(el);
+    ro.observe(root.current!);
     const focus = () => setEditing(true);
     const blur = () => setEditing(false);
     window.addEventListener('focus', focus);
@@ -216,52 +90,453 @@ export function App() {
       window.removeEventListener('focus', focus);
       window.removeEventListener('blur', blur);
     };
-  }, []);
+  }, [preview]);
 
-  useEffect(() => window.bar.phase(s.phase), [s.phase]);
+  useEffect(() => {
+    window.bar?.phase(online ? s.phase : 'idle');
+  }, [s.phase, online]);
 
-  const run = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!text.trim()) return;
-    await fetch(`${API}/task`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text }),
-    });
-    setText('');
+  useEffect(() => {
+    if (editing && !s.inCall && !history)
+      input.current?.focus({ preventScroll: true });
+  }, [editing, s.inCall, history]);
+
+  const send = async (kind: 'run' | 'stop') => {
+    if (request.current || (kind === 'run' && (!text.trim() || !online)))
+      return;
+    request.current = true;
+    setPending(kind);
+    setError('');
+    try {
+      if (kind === 'run') {
+        const submitted = text.trim();
+        await transport.run(submitted);
+        dispatch({ kind: 'submitted', text: submitted });
+        setText((current) => (current.trim() === submitted ? '' : current));
+      } else {
+        await transport.stop();
+      }
+    } catch {
+      setEditing(true);
+      setError(
+        kind === 'stop'
+          ? 'stop didn’t go through. check the backend connection and try again.'
+          : 'task didn’t go through. your draft’s saved here, peep the activity before you retry.',
+      );
+    } finally {
+      request.current = false;
+      setPending(null);
+    }
   };
 
-  const stop = () => fetch(`${API}/stop`, { method: 'POST' });
-
-  const escape = () => {
-    if (busy) stop();
-    window.bar.blur();
+  const collapse = () => {
+    setEditing(false);
+    setHistory(false);
+    setHelp(false);
+    setDismissedAt(Date.now());
+    if (preview) toggle.current?.focus({ preventScroll: true });
+    else window.bar?.blur();
   };
 
-  const label =
-    busy && s.steps > 0 ? `${LABEL[s.phase]} · ${s.steps}` : LABEL[s.phase];
+  useEffect(() => {
+    const escape = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape' || event.isComposing) return;
+      if (preview && !root.current?.contains(event.target as Node)) return;
+      event.preventDefault();
+      if (busy) void send('stop');
+      collapse();
+    };
+    window.addEventListener('keydown', escape);
+    return () => window.removeEventListener('keydown', escape);
+  });
 
   return (
-    <div className="island" ref={root}>
-      <span className={`dot ${s.phase}`} />
-      <span className="label">{label}</span>
-      {s.step && <span className="step">{s.step}</span>}
-      {editing && !s.inCall && (
-        <form onSubmit={run}>
-          <input
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            onKeyDown={(e) => e.key === 'Escape' && escape()}
-            placeholder={busy ? 'Type to take over' : 'Ask for something'}
-            autoFocus
-          />
-        </form>
+    <div
+      className={`island-wrap ${expanded ? 'is-expanded' : ''}`}
+      data-phase={s.phase}
+      data-connection={connection}
+      ref={root}
+      style={
+        {
+          '--screen-width': `${window.screen.availWidth - 32}px`,
+          '--screen-height': `${window.screen.availHeight - 48}px`,
+        } as CSSProperties
+      }
+    >
+      {expanded && (
+        <main className="panel" aria-label="phntm assistant">
+          <header className="panel-header">
+            <div className="brand">
+              <Icon name="ghost" />
+              <span>
+                phntm<span className="brand-period">.</span>
+              </span>
+            </div>
+            <div className="header-controls">
+              <span className="connection">
+                <span className="connection-dot" />
+                {online
+                  ? 'on your mac'
+                  : connection === 'connecting'
+                    ? 'connecting'
+                    : 'offline'}
+              </span>
+              <button
+                className="icon-button"
+                type="button"
+                aria-label={history ? 'back to task' : 'show session activity'}
+                aria-pressed={history}
+                onClick={() => setHistory(!history)}
+                title="session activity"
+              >
+                <Icon name="history" />
+              </button>
+              <button
+                className="icon-button collapse-button"
+                type="button"
+                aria-label="collapse assistant"
+                onClick={collapse}
+                title="collapse"
+              >
+                <span aria-hidden="true">−</span>
+              </button>
+            </div>
+          </header>
+
+          <div className="panel-content">
+            {!online && (
+              <div className="connection-notice" role="status">
+                <div>
+                  <strong>
+                    {connection === 'connecting'
+                      ? 'looking for your backend…'
+                      : 'can’t reach your mac rn.'}
+                  </strong>
+                  <p>
+                    {connection === 'connecting'
+                      ? 'waiting on the local connection.'
+                      : 'start the phntm backend and we’ll reconnect on our own.'}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  className="text-button"
+                  onClick={() => setReconnect((value) => value + 1)}
+                >
+                  retry
+                </button>
+              </div>
+            )}
+
+            {history ? (
+              <section className="history-view">
+                <div className="section-heading">
+                  <div>
+                    <p className="eyebrow">this session</p>
+                    <h1>behind the scenes.</h1>
+                  </div>
+                  <span className="count">{s.activity.length}</span>
+                </div>
+                {s.activity.length === 0 ? (
+                  <div className="empty-state">
+                    <Icon name="history" />
+                    <h2>quiet in here rn.</h2>
+                    <p>
+                      tasks, actions and call stuff show up here.
+                      <br />
+                      nothing’s saved once you close the app.
+                    </p>
+                  </div>
+                ) : (
+                  <ol className="activity-list">
+                    {[...s.activity].reverse().map((item, index) => (
+                      <li key={`${item.time}-${index}`}>
+                        <span className="activity-dot" />
+                        <div>
+                          <span className="activity-type">
+                            {item.type === 'heard' ? 'heard you' : item.type}
+                          </span>
+                          <p>{item.text}</p>
+                        </div>
+                        <time dateTime={new Date(item.time).toISOString()}>
+                          {new Date(item.time).toLocaleTimeString([], {
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          })}
+                        </time>
+                      </li>
+                    ))}
+                  </ol>
+                )}
+              </section>
+            ) : (
+              <>
+                {s.caption ? (
+                  <section
+                    className="caption-view"
+                    aria-live="polite"
+                    aria-atomic="true"
+                  >
+                    <p className="eyebrow">heard you</p>
+                    <h1>“{s.caption}”</h1>
+                    <span className="caption-context">
+                      <Icon name="phone" />
+                      from your facetime call
+                    </span>
+                  </section>
+                ) : busy ||
+                  s.phase === 'done' ||
+                  s.phase === 'stopped' ||
+                  s.phase === 'error' ? (
+                  <section className="task-view">
+                    <div className="task-status">
+                      <span className="status-dot" />
+                      {LABEL[s.phase]}
+                      {s.steps > 0 && (
+                        <span className="step-count">
+                          {s.steps} {s.steps === 1 ? 'step' : 'steps'}
+                        </span>
+                      )}
+                    </div>
+                    <h1>
+                      {s.task ||
+                        (s.phase === 'error'
+                          ? 'ok, let’s get you back on track.'
+                          : s.phase === 'done'
+                            ? 'one less thing on your plate.'
+                            : s.phase === 'stopped'
+                              ? 'back in your hands.'
+                              : 'on it, bet.')}
+                    </h1>
+                    <p className="task-detail" aria-live="polite">
+                      {s.step ||
+                        (busy
+                          ? 'peeping your screen…'
+                          : s.phase === 'stopped'
+                            ? 'task’s stopped. run it back whenever.'
+                            : 'ready for the next one.')}
+                    </p>
+                    {s.phase === 'error' && (
+                      <p className="recovery-hint">
+                        check the backend logs, then run it back.
+                      </p>
+                    )}
+                  </section>
+                ) : s.inCall ? (
+                  <section className="intro call-intro">
+                    <div className="call-symbol">
+                      <Icon name="phone" />
+                    </div>
+                    <p className="eyebrow">facetime</p>
+                    <h1>
+                      {s.phase === 'calling'
+                        ? 'pull up on your iphone.'
+                        : 'go off, i’m listening.'}
+                    </h1>
+                    <p>
+                      {s.phase === 'calling'
+                        ? 'pick up to talk to your mac.'
+                        : 'say “phantom” then whatever you need.'}
+                    </p>
+                  </section>
+                ) : (
+                  <section className="intro">
+                    <p className="eyebrow">lowkey here. highkey helpful.</p>
+                    <h1>
+                      your mac,
+                      <br />
+                      <span>at your command.</span>
+                    </h1>
+                    <p>say what you need. it handles the rest.</p>
+                  </section>
+                )}
+
+                {editing && !s.inCall && (
+                  <form
+                    className="composer"
+                    onSubmit={(event) => {
+                      event.preventDefault();
+                      void send('run');
+                    }}
+                  >
+                    <label htmlFor="task-input">
+                      {busy ? 'changed your mind?' : 'what are we doing today?'}
+                    </label>
+                    <textarea
+                      id="task-input"
+                      name="task"
+                      ref={input}
+                      value={text}
+                      onChange={(event) => setText(event.target.value)}
+                      placeholder="open notes and start a packing list…"
+                      rows={2}
+                      maxLength={8000}
+                      autoComplete="off"
+                      aria-describedby={
+                        error ? 'request-error' : 'composer-hint'
+                      }
+                      aria-invalid={Boolean(error)}
+                      onKeyDown={(event) => {
+                        if (
+                          event.key === 'Enter' &&
+                          !event.shiftKey &&
+                          !event.nativeEvent.isComposing
+                        ) {
+                          event.preventDefault();
+                          void send('run');
+                        }
+                      }}
+                    />
+                    <div className="composer-footer">
+                      <span id="composer-hint">
+                        {busy ? (
+                          'a new task replaces this one'
+                        ) : (
+                          <>
+                            <kbd>↵</kbd> to run{' '}
+                            <span className="hint-divider">/</span>{' '}
+                            <kbd>⇧ ↵</kbd> new line
+                          </>
+                        )}
+                      </span>
+                      <button
+                        className="run-button"
+                        type="submit"
+                        disabled={!online || Boolean(pending)}
+                      >
+                        {pending === 'run'
+                          ? 'sending…'
+                          : busy
+                            ? 'run this instead'
+                            : 'send it'}
+                        <span className="button-icon">
+                          <Icon name="arrow" />
+                        </span>
+                      </button>
+                    </div>
+                  </form>
+                )}
+                {error && (
+                  <p className="request-error" id="request-error" role="alert">
+                    {error}
+                  </p>
+                )}
+                {busy && (
+                  <button
+                    className="stop-button"
+                    type="button"
+                    disabled={Boolean(pending)}
+                    onClick={() => void send('stop')}
+                  >
+                    <span className="stop-square" />
+                    {pending === 'stop' ? 'stopping…' : 'stop task'}
+                    <kbd>esc</kbd>
+                  </button>
+                )}
+                {editing && !s.inCall && s.phase === 'idle' && !text && (
+                  <div className="suggestions">
+                    <p className="eyebrow">or start small</p>
+                    {suggestions.map((suggestion) => (
+                      <button
+                        type="button"
+                        className="suggestion"
+                        key={suggestion.title}
+                        onClick={() => {
+                          setText(suggestion.text);
+                          input.current?.focus();
+                        }}
+                      >
+                        <span className="suggestion-icon">
+                          <Icon name={suggestion.icon} />
+                        </span>
+                        <span>
+                          {suggestion.title}
+                          <small>{suggestion.text}</small>
+                        </span>
+                        <span className="suggestion-arrow" aria-hidden="true">
+                          ↗
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+
+          <footer className="panel-footer">
+            <button
+              className="remote-button"
+              type="button"
+              aria-expanded={help}
+              aria-controls="remote-help"
+              onClick={() => setHelp(!help)}
+            >
+              <Icon name="phone" />
+              take it with you
+              <span
+                aria-hidden="true"
+                className={help ? 'chevron is-open' : 'chevron'}
+              >
+                ⌄
+              </span>
+            </button>
+            <span className="footer-note">your mac. still yours.</span>
+          </footer>
+          {help && (
+            <section className="remote-help" id="remote-help">
+              <h2>not at your desk?</h2>
+              <ol>
+                <li>
+                  text yourself <code>ft me</code> on imessage.
+                </li>
+                <li>pick up your mac’s facetime call.</li>
+                <li>say “phantom” and tell it what you need.</li>
+              </ol>
+              <p>
+                needs imessage set up, macos permissions and blackhole audio
+                routing. you might have to start screen sharing yourself.
+              </p>
+            </section>
+          )}
+        </main>
       )}
-      {busy && (
-        <button type="button" className="stop" onClick={stop}>
-          Stop
+      <div className="island">
+        <button
+          className="island-toggle"
+          type="button"
+          ref={toggle}
+          aria-label={editing ? 'collapse assistant' : 'open phntm assistant'}
+          aria-expanded={expanded}
+          onClick={() => (editing ? collapse() : setEditing(true))}
+        >
+          <span className="island-mark">
+            <Icon name="ghost" />
+          </span>
+          <span className="island-status">
+            <span className="status-dot" />
+            <span aria-live="polite">{status}</span>
+            {busy && s.steps > 0 && (
+              <span className="island-steps">{s.steps}</span>
+            )}
+          </span>
+          <span className="shortcut" aria-hidden="true">
+            {expanded ? '⌄' : '⌘ ⇧ ␣'}
+          </span>
         </button>
-      )}
+        {busy && (
+          <button
+            className="island-stop"
+            type="button"
+            aria-label="stop task"
+            title="stop task (esc)"
+            disabled={Boolean(pending)}
+            onClick={() => void send('stop')}
+          >
+            <span className="stop-square" />
+          </button>
+        )}
+      </div>
     </div>
   );
 }
