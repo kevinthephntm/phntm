@@ -1,54 +1,53 @@
-import { app, BrowserWindow } from 'electron';
+import {
+  app,
+  BrowserWindow,
+  globalShortcut,
+  screen,
+  systemPreferences,
+} from 'electron';
 import started from 'electron-squirrel-startup';
 
 declare const MAIN_WINDOW_WEBPACK_ENTRY: string;
 declare const MAIN_WINDOW_PRELOAD_WEBPACK_ENTRY: string;
 
-// Handle creating/removing shortcuts on Windows when installing/uninstalling.
 if (started) {
   app.quit();
 }
 
-const createWindow = (): void => {
-  // Create the browser window.
-  const mainWindow = new BrowserWindow({
-    height: 600,
-    width: 800,
-    webPreferences: {
-      preload: MAIN_WINDOW_PRELOAD_WEBPACK_ENTRY,
-    },
+const WIDTH = 520;
+const HEIGHT = 96;
+
+const createBar = (): void => {
+  const { workArea } = screen.getPrimaryDisplay();
+  const win = new BrowserWindow({
+    width: WIDTH,
+    height: HEIGHT,
+    x: Math.round(workArea.x + (workArea.width - WIDTH) / 2),
+    y: workArea.y + 12,
+    frame: false,
+    transparent: true,
+    resizable: false,
+    alwaysOnTop: true,
+    skipTaskbar: true,
+    webPreferences: { preload: MAIN_WINDOW_PRELOAD_WEBPACK_ENTRY },
   });
-
-  // and load the index.html of the app.
-  mainWindow.loadURL(MAIN_WINDOW_WEBPACK_ENTRY);
-
-  // Open the DevTools.
-  mainWindow.webContents.openDevTools();
+  win.setAlwaysOnTop(true, 'screen-saver');
+  win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+  win.setContentProtection(true); // hidden from screenshots, so the computer-use agent never sees or targets the bar
+  win.webContents.on('console-message', (e) =>
+    console.log('[renderer]', e.level, e.message),
+  );
+  win.loadURL(MAIN_WINDOW_WEBPACK_ENTRY);
+  globalShortcut.register('CommandOrControl+Shift+Space', () => {
+    win.show();
+    win.focus();
+  });
 };
 
-// This method will be called when Electron has finished
-// initialization and is ready to create browser windows.
-// Some APIs can only be used after this event occurs.
 app.whenReady().then(() => {
-  createWindow();
-
-  // On OS X it's common to re-create a window in the app when the
-  // dock icon is clicked and there are no other windows open.
-  app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) {
-      createWindow();
-    }
-  });
+  app.dock?.hide();
+  systemPreferences.askForMediaAccess('microphone');
+  createBar();
 });
 
-// Quit when all windows are closed, except on macOS. There, it's common
-// for applications and their menu bar to stay active until the user quits
-// explicitly with Cmd + Q.
-app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') {
-    app.quit();
-  }
-});
-
-// In this file you can include the rest of your app's specific main process
-// code. You can also put them in separate files and import them here.
+app.on('window-all-closed', () => app.quit());

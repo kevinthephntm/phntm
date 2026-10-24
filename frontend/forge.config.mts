@@ -25,13 +25,14 @@ const config: ForgeConfig = {
   plugins: [
     new AutoUnpackNativesPlugin({}),
     new WebpackPlugin({
+      devContentSecurityPolicy: "default-src 'self' 'unsafe-inline' data: http://127.0.0.1:8000 https://api.openai.com; script-src 'self' 'unsafe-eval' 'unsafe-inline' data:",
       mainConfig,
       renderer: {
         config: rendererConfig,
         entryPoints: [
           {
             html: './src/index.html',
-            js: './src/renderer.ts',
+            js: './src/renderer.tsx',
             name: 'main_window',
             preload: {
               js: './src/preload.ts',

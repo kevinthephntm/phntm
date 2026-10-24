@@ -151,3 +151,4 @@ __pycache__/
 
 # Remember plugin
 .remember/
+frontend/.webpack/
